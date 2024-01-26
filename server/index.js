@@ -1,11 +1,5 @@
-// server/index.js
-
-const express = require("express");
-
+const express = require('express');
 const cors = require('cors');
-
-
-/* const axios = require('axios'); */
 
 const PORT = process.env.PORT || 3001;
 
@@ -20,10 +14,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-
 app.get('/pokemon', async (req, res) => {
     try {
-        const { page = 1, pageSize = 20, search } = req.query;
+        const { page = 1, pageSize = 20, search, type } = req.query;
         const offset = (page - 1) * pageSize;
 
         console.log('Received pagination parameters - page:', page, 'pageSize:', pageSize, 'offset:', offset);
@@ -32,6 +25,18 @@ app.get('/pokemon', async (req, res) => {
 
         if (search) {
             apiUrl = `https://pokeapi.co/api/v2/pokemon/${search.toLowerCase()}`;
+        } else if (type) {
+            apiUrl = `https://pokeapi.co/api/v2/type/${type.toLowerCase()}`;
+            const typeResponse = await fetch(apiUrl);
+            if (!typeResponse.ok) {
+                throw new Error(`Error ${typeResponse.status}: ${typeResponse.statusText}`);
+            }
+            const typeData = await typeResponse.json();
+            const pokemonList = typeData.pokemon.map(pokemonEntry => ({
+                name: pokemonEntry.pokemon.name,
+                url: pokemonEntry.pokemon.url,
+            }));
+            return res.json(pokemonList);
         } else {
             apiUrl = `https://pokeapi.co/api/v2/pokemon?offset=${offset}&limit=${pageSize}`;
         }
@@ -51,14 +56,12 @@ app.get('/pokemon', async (req, res) => {
         }));
 
         res.json(pokemonList);
+        
     } catch (error) {
         console.error('Error:', error.message);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
-
-
 
 app.listen(PORT, () => {
     console.log(`Server listening on ${PORT}`);
